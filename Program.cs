@@ -27,3 +27,4 @@ app.MapGet("/newendpoint", () => "Hello World!");
 // Adding a comment for commit 1
 public void NewFunction2() { }
 const int newValue3 = 3;
+public int newVariable4 = 4;
