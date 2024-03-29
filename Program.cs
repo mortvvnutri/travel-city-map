@@ -28,3 +28,4 @@ app.MapGet("/newendpoint", () => "Hello World!");
 public void NewFunction2() { }
 const int newValue3 = 3;
 public int newVariable4 = 4;
+// Refactoring code in commit 5
