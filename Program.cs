@@ -29,3 +29,4 @@ public void NewFunction2() { }
 const int newValue3 = 3;
 public int newVariable4 = 4;
 // Refactoring code in commit 5
+public void AnotherFunction6() { }
