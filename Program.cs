@@ -34,3 +34,4 @@ const string message7 = 'Hello, commit 7';
 // Improving performance in commit 8
 public bool isCommit9 = true;
 // Adding new feature in commit 10
+public void FeatureFunction11() { }
