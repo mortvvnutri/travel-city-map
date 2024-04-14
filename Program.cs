@@ -36,3 +36,4 @@ public bool isCommit9 = true;
 // Adding new feature in commit 10
 public void FeatureFunction11() { }
 const double version12 = 12.0;
+// Adding logging in commit 13
