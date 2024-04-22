@@ -40,3 +40,4 @@ const double version12 = 12.0;
 public void LoggingFunction14() { }
 public string logMessage15 = 'Log 15';
 // Fixing bug in commit 16
+public void BugFixFunction17() { }
