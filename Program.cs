@@ -41,3 +41,4 @@ public void LoggingFunction14() { }
 public string logMessage15 = 'Log 15';
 // Fixing bug in commit 16
 public void BugFixFunction17() { }
+const bool isFixed18 = true;
