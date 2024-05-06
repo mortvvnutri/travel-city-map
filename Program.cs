@@ -47,3 +47,4 @@ public void UnitTest20() { }
 public string testName21 = 'Test 21';
 // Enhancing security in commit 22
 public void SecurityFunction23() { }
+const string securityLevel24 = 'High';
