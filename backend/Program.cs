@@ -5,6 +5,9 @@ using System.Text;
 using backend.Utils;
 using TSM.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,9 +17,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Add DbContext
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ModelBase>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add JwtSettings
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -48,10 +50,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -63,6 +75,8 @@ app.UseStaticFiles();
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowAll"); // Use CORS policy
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -72,9 +86,10 @@ app.MapPost("/register", async ([FromBody] RegisterUserRequest request, [FromSer
 {
     var user = new User
     {
-        Username = request.Username,
-        PasswordHash = passwordHelper.HashPassword(request.Password),
-        Email = request.Email
+        Email = request.Email,
+        Pwd = passwordHelper.HashPassword(request.Password),
+        DisplayName = request.Name,
+        PreferredCats = request.PreferredCats?.Select(cat => (long)cat).ToList() // Приведение к long
     };
 
     dbContext.Users.Add(user);
@@ -87,9 +102,9 @@ app.MapPost("/register", async ([FromBody] RegisterUserRequest request, [FromSer
 
 app.MapPost("/login", async ([FromBody] LoginUserRequest request, [FromServices] ModelBase dbContext, [FromServices] TokenHelper tokenHelper, [FromServices] PasswordHelper passwordHelper) =>
 {
-    var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+    var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
-    if (user == null || !passwordHelper.VerifyPassword(request.Password, user.PasswordHash))
+    if (user == null || !passwordHelper.VerifyPassword(request.Password, user.Pwd))
     {
         return Results.Unauthorized();
     }
@@ -106,7 +121,8 @@ app.MapGet("/categories", async ([FromServices] ModelBase dbContext) =>
         .Select(c => new
         {
             c.Id,
-            c.Name
+            c.Name,
+            c.ParentId
         })
         .ToListAsync();
 
@@ -114,7 +130,7 @@ app.MapGet("/categories", async ([FromServices] ModelBase dbContext) =>
 });
 
 // Endpoint to get max 100 places, paged
-app.MapGet("/place", async ([FromServices] ModelBase dbContext, int page = 1) =>
+app.MapGet("/places", async ([FromServices] ModelBase dbContext, int page = 1) =>
 {
     int pageSize = 100;
     var places = await dbContext.Places
@@ -126,9 +142,8 @@ app.MapGet("/place", async ([FromServices] ModelBase dbContext, int page = 1) =>
             p.Name,
             p.Description,
             p.CategoryId,
-            p.Latitude,
-            p.Longitude,
-            p.POptions
+            p.Lat,
+            p.Long
         })
         .ToListAsync();
 
@@ -145,7 +160,9 @@ app.MapGet("/place/byCat/{categoryId}", async (int categoryId, [FromServices] Mo
             p.Id,
             p.Name,
             p.Description,
-            p.CategoryId
+            p.CategoryId,
+            p.Lat,
+            p.Long
         })
         .ToListAsync();
 
@@ -162,7 +179,9 @@ app.MapGet("/place/byId/{id}", async (int id, [FromServices] ModelBase dbContext
             p.Id,
             p.Name,
             p.Description,
-            p.CategoryId
+            p.CategoryId,
+            p.Lat,
+            p.Long
         })
         .FirstOrDefaultAsync();
 
@@ -174,88 +193,10 @@ app.MapGet("/place/byId/{id}", async (int id, [FromServices] ModelBase dbContext
     return Results.Ok(place);
 });
 
-// User routes
-app.MapGet("/users", async ([FromServices] ModelBase context) =>
+app.MapPost("/getroute", async ([FromBody] RouteRequest request, [FromServices] ModelBase dbContext) =>
 {
-    var users = await context.Users.ToListAsync();
-    return Results.Ok(users);
-});
-
-app.MapGet("/users/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var user = await context.Users.FindAsync(id);
-    if (user == null) return Results.NotFound();
-    return Results.Ok(user);
-});
-
-// PaymentOption routes
-app.MapGet("/paymentOptions", async ([FromServices] ModelBase context) =>
-{
-    var paymentOptions = await context.PaymentOptions.ToListAsync();
-    return Results.Ok(paymentOptions);
-});
-
-app.MapGet("/paymentOptions/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var paymentOption = await context.PaymentOptions.FindAsync(id);
-    if (paymentOption == null) return Results.NotFound();
-    return Results.Ok(paymentOption);
-});
-
-// Review routes
-app.MapGet("/reviews", async ([FromServices] ModelBase context) =>
-{
-    var reviews = await context.Reviews.ToListAsync();
-    return Results.Ok(reviews);
-});
-
-app.MapGet("/reviews/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var review = await context.Reviews.FindAsync(id);
-    if (review == null) return Results.NotFound();
-    return Results.Ok(review);
-});
-
-// RoutePoint routes
-app.MapGet("/routePoints", async ([FromServices] ModelBase context) =>
-{
-    var routePoints = await context.RoutePoints.ToListAsync();
-    return Results.Ok(routePoints);
-});
-
-app.MapGet("/routePoints/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var routePoint = await context.RoutePoints.FindAsync(id);
-    if (routePoint == null) return Results.NotFound();
-    return Results.Ok(routePoint);
-});
-
-// Route routes
-app.MapGet("/routes", async ([FromServices] ModelBase context) =>
-{
-    var routes = await context.Routes.ToListAsync();
-    return Results.Ok(routes);
-});
-
-app.MapGet("/routes/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var route = await context.Routes.FindAsync(id);
-    if (route == null) return Results.NotFound();
+    var route = await RouteService.GetRouteAsync(request.MyLat, request.MyLong, request.Categories, dbContext);
     return Results.Ok(route);
-});
-
-// Notification routes
-app.MapGet("/notifications", async ([FromServices] ModelBase context) =>
-{
-    var notifications = await context.Notifications.ToListAsync();
-    return Results.Ok(notifications);
-});
-
-app.MapGet("/notifications/{id}", async (int id, [FromServices] ModelBase context) =>
-{
-    var notification = await context.Notifications.FindAsync(id);
-    if (notification == null) return Results.NotFound();
-    return Results.Ok(notification);
 });
 
 app.Run();

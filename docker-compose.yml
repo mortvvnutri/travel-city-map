@@ -5,7 +5,8 @@ services:
     build:
       context: ./backend
     environment:
-      ConnectionStrings__DefaultConnection: "Host=92.63.176.224;Database=travel;Username=postgres;Password=root"
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=92.63.176.224;Database=travel;Username=postgres;Password=NlWEl+1pg/gQl95GAvwOUE8yb6KnLokmHReqWJBU/Ho="
     ports:
       - "5000:8080"
     restart: always
